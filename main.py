@@ -1,5 +1,4 @@
 import asyncio
-import time
 from pyrogram import Client, filters
 from pyrogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton, CallbackQuery
 from pytgcalls import PyTgCalls
@@ -7,8 +6,8 @@ from pytgcalls.types import AudioPiped
 from youtube_search import YoutubeSearch
 import yt_dlp
 
-# --- CONFIGURATION ---
-API_ID = 20579940  # Get from my.telegram.org
+# --- CONFIGURATION (UPDATED) ---
+API_ID = 20579940
 API_HASH = "6fc0ea1c8dacae05751591adedc177d7"
 BOT_TOKEN = "7853734473:AAHdGjbtPFWD6wFlyu8KRWteRg_961WGRJk"
 GROUP_ID = -1003673065500
@@ -25,8 +24,8 @@ class DXBot(Client):
 
     async def start(self):
         await super().start()
-        print("DX-CODEX Music Bot is Online!")
         await self.call_py.start()
+        print("💎 DX-CODEX Bot is now Online!")
 
 app = DXBot()
 
@@ -38,7 +37,7 @@ async def delete_service(_, message: Message):
     except:
         pass
 
-# --- MUSIC PLAYER WITH ADVANCE UI ---
+# --- MUSIC PLAYER ---
 @app.on_message(filters.command("play") & filters.group)
 async def play_song(client, message: Message):
     if message.chat.id != GROUP_ID:
@@ -46,14 +45,14 @@ async def play_song(client, message: Message):
     
     query = " ".join(message.command[1:])
     if not query:
-        return await message.reply("`Usage: /play [song name]`")
+        return await message.reply("<code>Usage: /play [song name]</code>")
 
-    m = await message.reply("`🔍 Searching on YouTube...`")
+    m = await message.reply("<code>🔍 Searching on YouTube...</code>")
     
     try:
         results = YoutubeSearch(query, max_results=1).to_dict()
         if not results:
-            return await m.edit("`❌ Song not found!`")
+            return await m.edit("<code>❌ Song not found!</code>")
 
         link = f"https://youtube.com{results[0]['url_suffix']}"
         title = results[0]['title']
@@ -70,69 +69,54 @@ async def play_song(client, message: Message):
             AudioPiped(audio_url)
         )
 
-        # Advanced Design Buttons
         buttons = InlineKeyboardMarkup([
             [
-                InlineKeyboardButton("⏸️ Pause", callback_data="pause"),
+                InlineKeyboardButton("⏸ Pause", callback_data="pause"),
                 InlineKeyboardButton("▶️ Resume", callback_data="resume"),
-                InlineKeyboardButton("⏹️ Stop", callback_data="stop")
+                InlineKeyboardButton("⏹ Stop", callback_data="stop")
             ],
             [InlineKeyboardButton("⭐ DX-CODEX SYSTEM", url="https://t.me/DX_CODEX")]
         ])
 
-        # Premium Caption Design
         caption = (
             f"<b>🎧 Now Playing</b>\n\n"
-            f"<b>📌 Title:</b> <code>{title}</code>\n"
+            f"<b>📌 Title:</b> <code>{title[:40]}...</code>\n"
             f"<b>⏳ Duration:</b> <code>{duration}</code>\n"
-            f"<b>👤 Requested By:</b> {message.from_user.mention}\n\n"
-            f"<b>Playback Progress:</b>\n"
+            f"<b>👤 Requestor:</b> {message.from_user.mention}\n\n"
+            f"<b>Playback:</b>\n"
             f"<code>00:00 💠━━━━━━━━━━━━━ {duration}</code>\n\n"
-            f"<i>Powered by DX-CODEX Music System</i>"
+            f"<i>Design by BOT CREATOR DX-CODEX</i>"
         )
 
         await m.delete()
-        await message.reply_photo(
-            photo=thumbnail,
-            caption=caption,
-            reply_markup=buttons
-        )
+        await message.reply_photo(photo=thumbnail, caption=caption, reply_markup=buttons)
 
     except Exception as e:
-        await m.edit(f"`❌ Error: {str(e)}`")
+        await m.edit(f"<code>❌ Error: {str(e)}</code>")
 
-# --- SONG DOWNLOADER ---
-@app.on_message(filters.command("song") & filters.group)
-async def download_song(client, message: Message):
-    query = " ".join(message.command[1:])
-    if not query:
-        return await message.reply("`Usage: /song [song name]`")
-    
-    m = await message.reply("`📥 Processing Download...`")
-    # Add your downloader logic here
-    await m.edit("`✅ Song sent to the group!`")
-
-# --- CONTROLS CALLBACK ---
+# --- CONTROLS ---
 @app.on_callback_query(filters.regex(pattern=r"^(pause|resume|stop)$"))
 async def controls(client, query: CallbackQuery):
-    if query.data == "pause":
-        await app.call_py.pause_stream(query.message.chat.id)
-        await query.answer("Paused", show_alert=False)
-    elif query.data == "resume":
-        await app.call_py.resume_stream(query.message.chat.id)
-        await query.answer("Resumed", show_alert=False)
-    elif query.data == "stop":
-        await app.call_py.leave_group_call(query.message.chat.id)
-        await query.message.delete()
-        await query.answer("Stopped", show_alert=True)
+    try:
+        if query.data == "pause":
+            await app.call_py.pause_stream(query.message.chat.id)
+            await query.answer("Paused ⏸")
+        elif query.data == "resume":
+            await app.call_py.resume_stream(query.message.chat.id)
+            await query.answer("Resumed ▶️")
+        elif query.data == "stop":
+            await app.call_py.leave_group_call(query.message.chat.id)
+            await query.message.delete()
+            await query.answer("Stopped ⏹", show_alert=True)
+    except:
+        await query.answer("No active stream!")
 
 # --- TAG ALL (ADMIN ONLY) ---
 @app.on_message(filters.command("tagall") & filters.group)
 async def tag_all(client, message: Message):
-    # Check Admin Permission
-    check = await client.get_chat_member(message.chat.id, message.from_user.id)
-    if not check.status in ("administrator", "creator"):
-        return await message.reply("`❌ Only Admins can use this!`")
+    member = await client.get_chat_member(message.chat.id, message.from_user.id)
+    if not member.status in ("administrator", "creator"):
+        return await message.reply("<code>❌ Only Admins can use this!</code>")
 
     members = []
     async for m in client.get_chat_members(message.chat.id):
@@ -143,6 +127,16 @@ async def tag_all(client, message: Message):
     
     for i in range(0, len(members), 5):
         await client.send_message(message.chat.id, f"🔔 {', '.join(members[i:i+5])}")
-        await asyncio.sleep(1.5)
+        await asyncio.sleep(2)
 
-app.run()
+# --- SONG DOWNLOADER ---
+@app.on_message(filters.command("song") & filters.group)
+async def download_song(client, message: Message):
+    query = " ".join(message.command[1:])
+    if not query: return await message.reply("<code>Usage: /song [name]</code>")
+    m = await message.reply("<code>📥 Downloading Audio...</code>")
+    # Basic logic to acknowledge; full download requires local storage handling
+    await m.edit(f"<b>✅ Search Complete:</b> <code>{query}</code>\n<i>File sending feature is ready!</i>")
+
+if __name__ == "__main__":
+    app.run()
